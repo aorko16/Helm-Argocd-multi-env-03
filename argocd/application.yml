@@ -1,12 +1,12 @@
 apiVersion: argoproj.io/v1alpha1
 kind: AppProject
 metadata:
-  name: frontend-my-app            # default project name changing 
+  name: frontend-my-app            # default project name changing
   namespace: argocd
 spec:
   description: Frontend project
   sourceRepos:
-    - https://github.com/aorko16/Helm-Argocd-01.git
+    - https://github.com/aorko16/Helm-Argocd-multi-env-03.git  # ✅ FIXED repo
   destinations:
     - namespace: my-app
       server: https://kubernetes.default.svc
@@ -22,11 +22,11 @@ metadata:
   finalizers:
     - resources-finalizer.argocd.argoproj.io   # Cascade-delete on removal
 spec:
-  project: frontend-my-app                # match project name 
+  project: frontend-my-app                # match project name
   source:
-    repoURL: https://github.com/aorko16/Helm-Argocd-01.git
+    repoURL: https://github.com/aorko16/Helm-Argocd-multi-env-03.git  # ✅ FIXED repo
     targetRevision: main
-    path: my-app                           # create by helm chart 
+    path: my-app                           # created by helm chart
   destination:
     server: https://kubernetes.default.svc
     namespace: my-app
@@ -37,7 +37,7 @@ spec:
     syncOptions:
       - CreateNamespace=true              # auto namespace
       - PrunePropagationPolicy=foreground # child resource delete then parent
-      - PruneLast=true                    # create new resource , old delete
+      - PruneLast=true                    # create new resource, old delete
     retry:
       limit: 3
       backoff:
