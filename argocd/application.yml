@@ -35,12 +35,12 @@ spec:
       prune: true
       selfHeal: true
     syncOptions:
-      - CreateNamespace=true                               # auto namespace
-      - PrunePropagationPolicy=foreground         # child resource delete then parent
-      - PruneLast=true                                              # create new resource , old delete
+      - CreateNamespace=true              # auto namespace
+      - PrunePropagationPolicy=foreground # child resource delete then parent
+      - PruneLast=true                    # create new resource , old delete
     retry:
       limit: 3
       backoff:
         duration: 5s
         factor: 2
-        maxDuration: 2m                                            # 3 minutes
+        maxDuration: 3m                   # 3 minutes
