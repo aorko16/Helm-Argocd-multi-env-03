@@ -1,5 +1,5 @@
 # ─────────────────────────────
-name: CI/CD → Build & GitOps Update
+name: CI/CD → Build & GitOps Update-1
 on:
   push:
     branches: [main]
@@ -8,10 +8,12 @@ on:
 
 permissions:
   contents: write
+  packages: write        # ✅ ADD: Required to push images to GHCR
 
 env:
   DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
   IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/ronco-java
+  GHCR_IMAGE: ghcr.io/${{ github.repository_owner }}/ronco-java   # ✅ ADD: GHCR image name
 
 jobs:
   # ─────────────────────────────
@@ -35,17 +37,25 @@ jobs:
           username: ${{ env.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      # ✅ ADD: Login to GitHub Container Registry
+      # No extra secret needed — GITHUB_TOKEN works automatically
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       # Generate a short 7-character SHA tag from the commit hash
       - id: tag
         run: |
           SHORT_SHA=${GITHUB_SHA::7}
           echo "tag=$SHORT_SHA" >> $GITHUB_OUTPUT
 
-      # Build & push Docker image to DockerHub
-      # ✅ Two tags pushed on every main branch push:
-      #    - latest  → always points to the newest image (quick reference)
-      #    - SHA tag → specific commit tag used for GitOps, rollback & traceability
-      # ℹ️ On pull_request: image is built but NOT pushed (push condition is false)
+      # Build & push Docker image to both DockerHub and GHCR
+      # ✅ ADD: Four tags pushed total:
+      #    DockerHub → ronco-java:latest + ronco-java:SHA
+      #    GHCR      → ronco-java:latest + ronco-java:SHA
+      # ℹ️ On pull_request: image is built but NOT pushed
       - uses: docker/build-push-action@v5
         with:
           context: bangla
@@ -53,6 +63,8 @@ jobs:
           tags: |
             ${{ env.IMAGE_NAME }}:latest
             ${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.tag }}
+            ${{ env.GHCR_IMAGE }}:latest
+            ${{ env.GHCR_IMAGE }}:${{ steps.tag.outputs.tag }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -71,8 +83,8 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       # Use sed to find the old image tag line and replace with the new SHA tag
-      # ℹ️ We update values.yaml with SHA tag (not latest)
-      #    because SHA tag is specific and traceable — this is the GitOps best practice
+      # ℹ️ values.yaml is updated with SHA tag (not latest)
+      #    SHA tag is specific and traceable — GitOps best practice
       - run: |
           IMAGE_LINE="image: ${{ env.IMAGE_NAME }}:.*"
           NEW_IMAGE="image: ${{ env.IMAGE_NAME }}:${{ needs.build-and-push.outputs.image_tag }}"
@@ -97,3 +109,5 @@ jobs:
       - run: |
           echo "Optional: Uncomment kubectl rollout if cluster access is available"
           # kubectl -n gitops-demo rollout restart deployment/ronco-java
+
+
