@@ -1,4 +1,3 @@
-
 # ─────────────────────────────
 name: CI/CD → Build & GitOps Update
 on:
@@ -12,7 +11,7 @@ permissions:
 
 env:
   DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-  IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/ronco-bangla
+  IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/ronco-java
 
 jobs:
   # ─────────────────────────────
@@ -43,13 +42,17 @@ jobs:
           echo "tag=$SHORT_SHA" >> $GITHUB_OUTPUT
 
       # Build & push Docker image to DockerHub
-      # ✅ FIX: "context: bangla/ ." had a space — was an invalid path
-      #         Fixed to "context: bangla" so Docker correctly finds bangla/Dockerfile
+      # ✅ Two tags pushed on every main branch push:
+      #    - latest  → always points to the newest image (quick reference)
+      #    - SHA tag → specific commit tag used for GitOps, rollback & traceability
+      # ℹ️ On pull_request: image is built but NOT pushed (push condition is false)
       - uses: docker/build-push-action@v5
         with:
           context: bangla
           push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.tag }}
+          tags: |
+            ${{ env.IMAGE_NAME }}:latest
+            ${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.tag }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -67,8 +70,9 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      # Use sed to find the old image tag line and replace with the new tag
-      # ✅ No change here — working correctly
+      # Use sed to find the old image tag line and replace with the new SHA tag
+      # ℹ️ We update values.yaml with SHA tag (not latest)
+      #    because SHA tag is specific and traceable — this is the GitOps best practice
       - run: |
           IMAGE_LINE="image: ${{ env.IMAGE_NAME }}:.*"
           NEW_IMAGE="image: ${{ env.IMAGE_NAME }}:${{ needs.build-and-push.outputs.image_tag }}"
@@ -76,7 +80,6 @@ jobs:
 
       # Commit and push the updated values.yaml back to main branch
       # If nothing changed, skip the commit to avoid empty commits
-      # ✅ No change here — working correctly
       - run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -93,5 +96,4 @@ jobs:
       # Optional: restart the Kubernetes deployment when cluster access is configured
       - run: |
           echo "Optional: Uncomment kubectl rollout if cluster access is available"
-          # kubectl -n gitops-demo rollout restart deployment/ronco-bangla
-
+          # kubectl -n gitops-demo rollout restart deployment/ronco-java
