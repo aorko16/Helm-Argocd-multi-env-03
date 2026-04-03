@@ -7,7 +7,7 @@ metadata:
 spec:
   description: Frontend project
   sourceRepos:
-    - https://github.com/aorko16/Helm-Argocd-01.git
+    - https://github.com/aorko16/Helm-Argocd-multi-env-03.git   # need change repo
   destinations:
     - namespace: my-app
       server: https://kubernetes.default.svc
@@ -23,7 +23,7 @@ metadata:
 spec:
   project: frontend-my-app     # match project name 
   source:
-    repoURL: https://github.com/aorko16/Helm-Argocd-01.git
+    repoURL: - https://github.com/aorko16/Helm-Argocd-multi-env-03.git   # need change repo
     targetRevision: main
     path: my-app
   destination:
