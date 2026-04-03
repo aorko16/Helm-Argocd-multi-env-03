@@ -1,5 +1,5 @@
-# ─────────────────────────────
-name: CI/CD → Build & GitOps Update-1
+name: CI/CD → Build & GitOps Update
+
 on:
   push:
     branches: [main]
@@ -8,12 +8,12 @@ on:
 
 permissions:
   contents: write
-  packages: write        # ✅ ADD: Required to push images to GHCR
+  packages: write
 
 env:
   DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
   IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/ronco-java
-  GHCR_IMAGE: ghcr.io/${{ github.repository_owner }}/ronco-java   # ✅ ADD: GHCR image name
+  GHCR_IMAGE: ghcr.io/${{ github.repository_owner }}/ronco-java
 
 jobs:
   # ─────────────────────────────
@@ -25,37 +25,28 @@ jobs:
       image_tag: ${{ steps.tag.outputs.tag }}
 
     steps:
-      # Checkout the repository code
       - uses: actions/checkout@v4
 
-      # Setup Docker Buildx for multi-platform builds
       - uses: docker/setup-buildx-action@v3
 
-      # Login to DockerHub using secrets
       - uses: docker/login-action@v3
         with:
           username: ${{ env.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # ✅ ADD: Login to GitHub Container Registry
-      # No extra secret needed — GITHUB_TOKEN works automatically
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Generate a short 7-character SHA tag from the commit hash
+      # Generate short 7-char SHA tag
       - id: tag
         run: |
           SHORT_SHA=${GITHUB_SHA::7}
           echo "tag=$SHORT_SHA" >> $GITHUB_OUTPUT
+          echo "Generated tag: $SHORT_SHA"
 
-      # Build & push Docker image to both DockerHub and GHCR
-      # ✅ ADD: Four tags pushed total:
-      #    DockerHub → ronco-java:latest + ronco-java:SHA
-      #    GHCR      → ronco-java:latest + ronco-java:SHA
-      # ℹ️ On pull_request: image is built but NOT pushed
       - uses: docker/build-push-action@v5
         with:
           context: bangla
@@ -69,7 +60,7 @@ jobs:
           cache-to: type=gha,mode=max
 
   # ─────────────────────────────
-  # JOB 2: Update Deployment manifest
+  # JOB 2: Update values.yaml with new SHA tag
   # ─────────────────────────────
   update-manifest:
     runs-on: ubuntu-latest
@@ -77,37 +68,38 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
-      # Checkout repo with write permission to push changes later
       - uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      # Use sed to find the old image tag line and replace with the new SHA tag
-      # ℹ️ values.yaml is updated with SHA tag (not latest)
-      #    SHA tag is specific and traceable — GitOps best practice
-      - run: |
-          IMAGE_LINE="image: ${{ env.IMAGE_NAME }}:.*"
-          NEW_IMAGE="image: ${{ env.IMAGE_NAME }}:${{ needs.build-and-push.outputs.image_tag }}"
-          sed -i "s|$IMAGE_LINE|$NEW_IMAGE|" my-app/values.yaml
+      # ✅ FIXED: sed now targets the `tag:` line directly in values.yaml
+      - name: Update image tag in values.yaml
+        run: |
+          NEW_TAG="${{ needs.build-and-push.outputs.image_tag }}"
 
-      # Commit and push the updated values.yaml back to main branch
-      # If nothing changed, skip the commit to avoid empty commits
-      - run: |
+          echo "Updating tag to: $NEW_TAG"
+
+          # Replace the tag line (handles quoted and unquoted values)
+          sed -i "s|  tag:.*|  tag: \"$NEW_TAG\"|" my-app/values.yaml
+
+          # Verify the change
+          echo "--- Updated values.yaml image section ---"
+          grep -A4 "^image:" my-app/values.yaml
+
+      - name: Commit and push updated values.yaml
+        run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add my-app/values.yaml
 
           if git diff --staged --quiet; then
-            echo "No changes to commit"
+            echo "No changes to commit — tag may already be up to date"
           else
-            git commit -m "ci: bump image to ${{ needs.build-and-push.outputs.image_tag }} [skip ci]"
+            git commit -m "ci: bump image tag to ${{ needs.build-and-push.outputs.image_tag }} [skip ci]"
             git pull --rebase origin main
             git push origin main
           fi
 
-      # Optional: restart the Kubernetes deployment when cluster access is configured
-      - run: |
-          echo "Optional: Uncomment kubectl rollout if cluster access is available"
-          # kubectl -n gitops-demo rollout restart deployment/ronco-java
-
-
+      # Optional: force ArgoCD sync if you have cluster access
+      # - name: Force ArgoCD sync
+      #   run: argocd app sync my-app --auth-token ${{ secrets.ARGOCD_TOKEN }}
