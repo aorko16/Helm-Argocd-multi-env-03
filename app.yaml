@@ -23,7 +23,7 @@ metadata:
 spec:
   project: frontend-my-app     # match project name 
   source:
-    repoURL: - https://github.com/aorko16/Helm-Argocd-multi-env-03.git   # need change repo
+    repoURL: https://github.com/aorko16/Helm-Argocd-multi-env-03.git   # need change repo
     targetRevision: main
     path: my-app
   destination:
