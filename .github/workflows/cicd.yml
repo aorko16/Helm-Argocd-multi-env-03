@@ -1,4 +1,4 @@
-name: CI/CD → Build & GitOps Update Main
+name: CI/CD → Build & GitOps Update Main-cicd
 
 on:
   push:
