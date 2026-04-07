@@ -1,5 +1,5 @@
 # ------------------ Workflow Definition ------------------
-name: CI/CD-Test-0111
+name: CI/CD Main - Code
 
 on:
   push:
