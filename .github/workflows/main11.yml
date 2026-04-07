@@ -1,4 +1,4 @@
-name: CI/CD → Build & GitOps Update-111
+name: CI/CD → Build & GitOps Update-222222222
 
 on:
   push:
@@ -32,7 +32,7 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         with:
-          projectBaseDir: bangla 
+          projectBaseDir: bangla
 
       - name: SonarQube Quality Gate check
         uses: sonarsource/sonarqube-quality-gate-action@master
@@ -40,6 +40,8 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        with:
+          scanMetadataReportFile: bangla/.scannerwork/report-task.txt
 
   # ─────────────────────────────
   # JOB 2: Build & Push Docker image
