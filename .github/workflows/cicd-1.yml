@@ -1,4 +1,4 @@
-name: CI/CD-Test-001 TTTT
+name: CI/CD-Test-cicd-1.yml
 
 on:
   push:
