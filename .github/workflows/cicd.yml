@@ -1,4 +1,4 @@
-name: CI/CD-001   
+name: CI/CD-Test-001   
 
 on:
   push:
