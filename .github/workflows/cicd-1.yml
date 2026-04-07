@@ -1,5 +1,5 @@
 # ------------------ Workflow Definition ------------------
-name: CI/CD Main - Code
+name: CI/CD Main -cicd-1
 
 on:
   push:
