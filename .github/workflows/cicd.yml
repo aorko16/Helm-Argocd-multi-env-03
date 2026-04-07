@@ -1,4 +1,4 @@
-name: CI/CD cicd-66666
+name: CI/CD-001
 
 on:
   push:
